@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
@@ -15,6 +16,7 @@ import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.SelectorProvider;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -84,9 +86,19 @@ public class NIOServer {
         synchronized (listUsers) {
         	RSA rsa = new RSA();
         	rsa.init(1024);
-            this.listUsers.put(socketChannel, new User("Bob", ByteBuffer.allocate(2048), rsa, new RC4(password.getBytes())));
+        	RC4 rc4 = new RC4(password.getBytes());
+            this.listUsers.put(socketChannel, new User("Bob", ByteBuffer.allocate(8192), rsa, rc4));
             
+            BigInteger pow = rsa.getPublicKey();       
+            BigInteger mod = rsa.getModulus();  
             
+            /* EKE-1.1 модуль от RSA. 
+             * EKE-1.2 показатель степени от RSA зашифрованный с помощью RC4(используя password).
+             */
+            JsonObject message = getJsonMessage("EKE-1.1", "Server", mod.toString());
+            sendMessage(message, socketChannel);
+            message = getJsonMessage("EKE-1.2", "Server", new String(rc4.DoIt(pow.toByteArray())));
+            sendMessage(message, socketChannel);
         }
         System.out.println("New connection! " + socketChannel.getRemoteAddress());
     }
@@ -112,7 +124,33 @@ public class NIOServer {
                 System.out.println(currentUser.getUserName() + " change name on " + jsonObject.get("attachment").getAsString());
                 currentUser.setUserName(jsonObject.get("attachment").getAsString());
                 break;
+        	case "EKE-1": {
+        		RSA rsa = currentUser.getRsa();
+            	RC4 rc4 = currentUser.getRc4();
+            	byte[] code = rc4.DoIt(jsonObject.get("attachment").getAsString().getBytes());
+            	rc4 = new RC4(rsa.encrypt(new BigInteger(code)).toByteArray());
+            	currentUser.setRc4(rc4); 
+            	
+            	JsonObject jsonMessage = getJsonMessage("EKE-2", "Server", new String(rc4.DoIt(currentUser.getPrivateStr())));
+            	sendMessage(jsonMessage, socketChannel);	
+        		break;
         	}
+        	case "EKE-2.1":
+        		if(!Arrays.equals(currentUser.getPrivateStr(), jsonObject.get("attachment").getAsString().getBytes())) {
+        			close(key);
+        			 System.out.println("Error: EKE-2.1. Server private str 1 != user private str 1");
+        		}
+        		
+        		System.out.println("Server private str 1 == user private str 1");
+        		break;
+        	case "EKE-2.2": {
+        		byte[] code = currentUser.getRc4().DoIt(jsonObject.get("attachment").getAsString().getBytes()); 
+        		JsonObject jsonMessage = getJsonMessage("EKE-3", "Server", new String(currentUser.getRc4().DoIt(code)));
+            	sendMessage(jsonMessage, socketChannel);	
+        		break;
+        	}
+        	}
+        	
         } catch(IOException e) {
         	this.close(key);
         }

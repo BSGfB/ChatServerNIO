@@ -2,7 +2,7 @@ package ru.start;
 
 import java.io.IOException;
 
-import ru.objects.RC4;
+import ru.objects.NIOServer;
 // import ru.objects.RC4;
 
 /**
@@ -10,6 +10,8 @@ import ru.objects.RC4;
  */
 public class Start {
     public static void main(String[] args) throws IOException {
+    	new NIOServer("localhost", 2020, "99538574").run();
+    	/*
     	String password = "123";
     	String text = "Hello, World!";
     	byte[] byteText = text.getBytes();
@@ -31,6 +33,7 @@ public class Start {
     	
     	String str = new String(decode);
     	System.out.println(str);
+    	*/
     }
     
     public static void print(int[] array) {
