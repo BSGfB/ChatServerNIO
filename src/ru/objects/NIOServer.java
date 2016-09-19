@@ -94,38 +94,29 @@ public class NIOServer {
     private void read(SelectionKey key) throws IOException {
         SocketChannel socketChannel = (SocketChannel) key.channel();
         User currentUser = (User)listUsers.get(socketChannel);
-        ByteBuffer buffer = currentUser.getBuffer();
-        buffer.clear();
-
-        int numByte = 0;
+        
         try {
-            numByte = socketChannel.read(buffer);
-        } catch (IOException e) {
-            this.close(key);
-        }
-        if (numByte == -1) {
-            this.close(key);
-        } else if (numByte > 0) {
-            buffer.flip();
-            CharBuffer buff = decoder.decode(buffer);
-            JsonObject jsonObject = new JsonParser().parse(String.valueOf(buff)).getAsJsonObject();
+        	JsonObject jsonObject = readMessage((SocketChannel) key.channel());
+        	
+        	switch (jsonObject.get("type").getAsString()) {
+            case "message":
+                JsonObject reply = getJsonMessage("message", currentUser.getUserName(), jsonObject.get("attachment").getAsString());
+                
+                for(Object obj : this.listUsers.keySet()) {
+                    sendMessage(reply, (SocketChannel) obj);
+                }
 
-            switch (jsonObject.get("type").getAsString()) {
-                case "message":
-                    JsonObject reply = getJsonMessage("message", currentUser.getUserName(), jsonObject.get("attachment").getAsString());
-                    
-                    for(Object obj : this.listUsers.keySet()) {
-                        sendMessage(reply, (SocketChannel) obj);
-                    }
-
-                    System.out.println(currentUser.getUserName() + ": " + jsonObject.get("attachment").getAsString());
-                    break;
-                case "Name":
-                    System.out.println(currentUser.getUserName() + " change name on " + jsonObject.get("attachment").getAsString());
-                    currentUser.setUserName(jsonObject.get("attachment").getAsString());
-                    break;
-            }
+                System.out.println(currentUser.getUserName() + ": " + jsonObject.get("attachment").getAsString());
+                break;
+            case "Name":
+                System.out.println(currentUser.getUserName() + " change name on " + jsonObject.get("attachment").getAsString());
+                currentUser.setUserName(jsonObject.get("attachment").getAsString());
+                break;
+        	}
+        } catch(IOException e) {
+        	this.close(key);
         }
+        
     }
 
     private void close(SelectionKey key) {
