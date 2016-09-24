@@ -1,5 +1,7 @@
 package ru.objects;
 
+import java.math.BigInteger;
+
 public class RC4 {
 	private int numlen = 128;
 	private final byte[] S = new byte[numlen];
@@ -11,7 +13,7 @@ public class RC4 {
 			S[i] = i;
 		
 		for(int i = 0, j = 0; i < numlen; i++) {			
-			j = (j + S[i] + key[i % key.length]) % numlen;			
+			j = (j + S[i] + (key[i % key.length] < 0 ? key[i % key.length] * -1: key[i % key.length])) % numlen;			
 			RC4.swap(S, i, j);
 		}
 			
@@ -29,56 +31,26 @@ public class RC4 {
 		array[j] = temp;
 	}
 	
+	public BigInteger DoIt(final BigInteger inArray) {		
+		final byte[] array = inArray.toByteArray();
+		final byte[] outArray = inArray.toByteArray();
+		
+		for(byte i = 0; i >= 0 & i < array.length; ++i) {						
+			outArray[i] = (byte) (array[i] ^ Z[i % numlen]);
+		}
+		
+		return new BigInteger(outArray);
+	}  
+	/*
 	public byte[] DoIt(final byte[] inArray) {			
 		final byte[] outArray = new byte[inArray.length];
 		
-		for(byte i = 0; i < inArray.length; ++i) {						
+		for(byte i = 0; i >= 0 & i < inArray.length; ++i) {						
 			outArray[i] = (byte) (inArray[i] ^ Z[i % numlen]);
 		}
 		
 		return outArray;
 	}  
+	*/
 }
 
-/*
-public class RC4 {
-	private final byte[] S = new byte[256];
-	private int x = 0;
-	private int y = 0;
-	
-	private RC4() {}
-	
-	public RC4(final byte[] key) {
-		init(key);
-	}
-	
-	private void init(final byte[] key) {
-		for(int i = 0; i < S.length; i++)
-			S[i] = (byte)i;
-		
-		for(int i = 0, j = 0; i < S.length; i++) {			
-			j = (j + S[i] + key[i % key.length]) % 256;			
-			RC4.swap(S, i, j);
-		}
-	}
-	
-	public byte[] DoIt(final byte[] inArray) {		
-		final byte[] outArray = new byte[inArray.length];
-		
-		for(int i = 0; i < inArray.length; ++i) {
-			x = (x + 1) % 256;
-			y = (y + S[x]) % 256;
-			RC4.swap(S, x, y);
-						
-			outArray[i] = (byte) (inArray[i] ^ ((S[(S[x] + S[y]) % 256])));
-		}
-		return outArray;
-	}
-		
-	private static void swap(byte[] array, int i, int j) {
-		byte temp = array[i];
-		array[i] = array[j];
-		array[j] = temp;
-	}
-}
-*/

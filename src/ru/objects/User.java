@@ -2,6 +2,7 @@ package ru.objects;
 
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.security.SecureRandom;
 import java.util.Random;
 
 /**
@@ -14,7 +15,7 @@ public class User {
     private RSA rsa;
     private RC4 rc4;
     
-    private byte[] privateStr;
+    private BigInteger privateWord;
     
     public User(String userName, ByteBuffer buffer, RSA rsa, RC4 rc4) {
         this.userName = userName;
@@ -22,9 +23,9 @@ public class User {
         this.rc4 = rc4;
         this.rsa = rsa;
         
-        Random rnd = new Random();
+        SecureRandom rnd = new SecureRandom();
         rnd.setSeed(System.currentTimeMillis());
-        privateStr = new BigInteger(512, rnd).toByteArray();
+        privateWord = new BigInteger(256, rnd);
     }
 
     @SuppressWarnings("unused")
@@ -34,12 +35,12 @@ public class User {
         return userName;
     }
 
-    public byte[] getPrivateStr() {
-		return privateStr;
+    public BigInteger getPrivateWord() {
+		return privateWord;
 	}
 
-	public void setPrivateStr(byte[] privateStr) {
-		this.privateStr = privateStr;
+	public void setPrivateWord(BigInteger privateWord) {
+		this.privateWord = privateWord;
 	}
 
 	public void setUserName(String userName) {

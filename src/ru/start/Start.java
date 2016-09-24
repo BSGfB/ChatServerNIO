@@ -1,8 +1,13 @@
 package ru.start;
 
 import java.io.IOException;
+import java.math.BigInteger;
+import java.security.SecureRandom;
+import java.util.Arrays;
 
 import ru.objects.NIOServer;
+import ru.objects.RC4;
+import ru.objects.RSA;
 // import ru.objects.RC4;
 
 /**
@@ -11,29 +16,82 @@ import ru.objects.NIOServer;
 public class Start {
     public static void main(String[] args) throws IOException {
     	new NIOServer("localhost", 2020, "99538574").run();
+    	
+    	
+    	/* Server */
+    	/**
+    	SecureRandom random = new SecureRandom();
+    	random.setSeed(System.currentTimeMillis());
+    	
+    	RC4 ServerRC4 = new RC4("99538574".getBytes());
+    	RSA ServerRSA = new RSA();
+    	ServerRSA.init(1024);
+    	
+    	byte[] pow = ServerRSA.getPublicKey().toByteArray();
+    	byte[] mod = ServerRSA.getModulus().toByteArray();
+
+    	pow = ServerRC4.DoIt(pow);
+    	
+    	byte[] privateServerString = new BigInteger(256, random).toByteArray();
+    	////////////////////////////////////////////
+    	
+    	/* Client */
     	/*
-    	String password = "123";
-    	String text = "Hello, World!";
-    	byte[] byteText = text.getBytes();
-    	byte[] byteText2 = {1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4};
-    	
-    	System.out.println("byteText:");
-    	print(byteText);
-    	
-    	
-    	RC4 rc4Server = new RC4(byteText);
-    	byte[] code = rc4Server.DoIt(text.getBytes());
-    	
-    	System.out.println("code:");
-    	print(code);
-    
-    	byte[] decode = rc4Server.DoIt(code);
-    	System.out.println("decode:");
-    	print(decode);
-    	
-    	String str = new String(decode);
-    	System.out.println(str);
+    	RC4 ClientRC4 = new RC4("99538574".getBytes());
+    	RSA ClientRSA = new RSA();
+    	byte[] K = new BigInteger(512, random).toByteArray();
+    	byte[] privateClientString = new BigInteger(256, random).toByteArray();
+    	////////////////////////////////////////////
     	*/
+    	// 1 ///////////////////////////
+    	
+    	/* Client */
+    	/*
+    	pow = ClientRC4.DoIt(pow);
+    	
+    	ClientRSA.setPublicKey(new BigInteger(pow));
+    	ClientRSA.setModulus(new BigInteger(mod));
+    	
+    	byte[] array_1 = ClientRSA.encrypt(new BigInteger(K)).toByteArray();
+    	array_1 = ClientRC4.DoIt(array_1);
+    	*/
+    	/* Server */
+    	/*
+    	array_1 = ServerRC4.DoIt(array_1);
+    	array_1 = ServerRSA.decrypt(new BigInteger(array_1)).toByteArray();
+    	
+    	System.out.println("K == K " + Arrays.equals(K, array_1));
+    	
+    	ServerRC4 = new RC4(array_1);
+    	ClientRC4 = new RC4(K);
+    	*/
+    	// 2 ////////////////////////////
+    	
+    	/* Server */
+    	/*
+    	print(privateServerString);
+    	byte[] array_2_1 = ServerRC4.DoIt(privateServerString);
+*/
+    	/* Client */
+/*
+    	array_2_1 = ClientRC4.DoIt(array_2_1);
+    	array_2_1 = ClientRC4.DoIt(array_2_1);
+
+    	byte[] array_2_2 = ClientRC4.DoIt(privateClientString);
+*/
+    	/* Server */
+    	/*
+    	array_2_1 = ServerRC4.DoIt(array_2_1);
+
+    	array_2_2 = ServerRC4.DoIt(array_2_2);
+    	array_2_2 = ServerRC4.DoIt(array_2_2);
+    	System.out.println("privateServerString == KprivateServerString " + Arrays.equals(array_2_1, privateServerString));
+*/
+    	/* Client */
+/*
+    	array_2_2 = ClientRC4.DoIt(array_2_2);
+    	System.out.println("privateServerString == KprivateServerString " + Arrays.equals(array_2_2, privateClientString));
+*/
     }
     
     public static void print(int[] array) {
