@@ -25,6 +25,7 @@ import java.util.Map;
 /**
  * Created by Sergei on 9/4/2016.
  */
+
 public class NIOServer {
     private final int port;
     private final String address;
@@ -96,14 +97,8 @@ public class NIOServer {
         /* EKE-1.1 модуль от RSA. 
          * EKE-1.2 показатель степени от RSA зашифрованный с помощью RC4(используя password).
          */
-        JsonObject message = getJsonMessage("EKE-1.1", "Server", mod.toString());
-        sendMessage(message, socketChannel);
-
-        
-        pow = rc4.DoIt(pow);
-        message = getJsonMessage("EKE-1.2", "Server", pow.toString());
-
-        sendMessage(message, socketChannel);
+        sendMessage("EKE-1.1", "Server", mod.toString(), socketChannel);
+        sendMessage("EKE-1.2", "Server", pow.toString(), socketChannel);
         System.out.println("New connection! " + socketChannel.getRemoteAddress());
         
     }
@@ -114,22 +109,16 @@ public class NIOServer {
         
         try {
         	Message message = readMessage((SocketChannel) key.channel());
+        	System.out.println(message);
         	
         	switch (message.getType()) {
             case "message":
-                for(Object obj : this.listUsers.keySet()) {
-                	User user = (User)listUsers.get((SocketChannel) obj);
-                	JsonObject reply = getJsonMessage("message", 
-                			currentUser.getUserName(), 
-                			user.getRc4().DoIt(currentUser.getRc4().DoIt(new BigInteger(message.getAttachment().getBytes()))).toString());
-                	sendMessage(reply, (SocketChannel) obj);
-                	/*
-                	JsonObject reply = getJsonMessage("message", currentUser.getUserName(), message.getAttachment());
-                    sendMessage(reply, (SocketChannel) obj);
-                    */
+                for(SocketChannel sc: listUsers.keySet()) {
+                	User user = listUsers.get(sc);
+                	if(!sc.equals(socketChannel)) {
+                		sendMessage("message", currentUser.getUserName(), message.getAttachment(), sc);
+                	}
                 }
-
-                System.out.println(currentUser.getUserName() + ": " +  message.getAttachment());
                 break;
             case "Name":
                 System.out.println(currentUser.getUserName() + " change name on " +  message.getAttachment());
@@ -139,19 +128,17 @@ public class NIOServer {
         		RSA rsa = currentUser.getRsa();
             	RC4 rc4 = currentUser.getRc4();
             	
-            	BigInteger code = new BigInteger(message.getAttachment());
-            	code = rc4.DoIt(code);
+            	BigInteger code = new BigInteger(message.getAttachment());            	
             	code = rsa.decrypt(code);
-            	            	
+            	
             	rc4 = new RC4(code.toByteArray());
             	currentUser.setRc4(rc4); 
             	
-            	JsonObject jsonMessage = getJsonMessage("EKE-2", "Server", rc4.DoIt(currentUser.getPrivateWord()).toString());
-            	sendMessage(jsonMessage, socketChannel);
+            	sendMessage("EKE-2", "Server", currentUser.getPrivateWord().toString(), socketChannel);
         		break;
         	}
         	case "EKE-2.1":
-        		BigInteger word = currentUser.getRc4().DoIt(new BigInteger(message.getAttachment()));
+        		BigInteger word = new BigInteger(message.getAttachment());
         		if(!currentUser.getPrivateWord().equals(word)) {
         			//close(key);
         			System.out.println("Error: EKE-2.1. Server private str 1 != user private str 1");
@@ -159,20 +146,17 @@ public class NIOServer {
         		}
         		System.out.println("Server private str 1 == user private str 1");
         		break;
-        	case "EKE-2.2":
-        		BigInteger code = currentUser.getRc4().DoIt(new BigInteger(message.getAttachment())); 
-        		JsonObject jsonMessage = getJsonMessage("EKE-3", "Server", currentUser.getRc4().DoIt(code).toString());
-        		
-            	sendMessage(jsonMessage, socketChannel);	
+        	case "EKE-2.2":     		
+            	sendMessage("EKE-3", "Server", message.getAttachment(), socketChannel);	
         		break;
         	default:
         		System.out.println("Error default: " + message);
         		break;
         	}
-        	
         } catch(IOException e) {
         	this.close(key);
         }
+        
         
     }
     
@@ -192,42 +176,38 @@ public class NIOServer {
 
         key.cancel();
     }
-
-    private JsonObject getJsonMessage(String type, String name, String attachment) {
+    
+    private void sendMessage(String type, String name, String attachment, SocketChannel chanel) throws IOException {
     	JsonObject reply = new JsonObject();
         reply.addProperty("type", type);
         reply.addProperty("name", name);
         reply.addProperty("attachment", attachment);
         
-        return reply;
+        BigInteger code = new BigInteger(new Gson().toJson(reply).getBytes());
+    	code = listUsers.get(chanel).getRc4().DoIt(code);
+        chanel.write(ByteBuffer.wrap(code.toString().getBytes(ch)));
     }
-    
-    private void sendMessage(JsonObject reply, SocketChannel chanel) throws IOException {
-    	System.out.println(reply);
-        chanel.write(ByteBuffer.wrap(new Gson().toJson(reply).getBytes(ch)));
-    }
-    
+
     private Message readMessage(SocketChannel chanel) throws IOException {
     	User currentUser = (User)listUsers.get(chanel);
         ByteBuffer buffer = currentUser.getBuffer();
         buffer.clear();
-        
-        int numByte = 0;
-        numByte = chanel.read(buffer);
-        
-        if(numByte <= 0) {
-        	throw new IOException("numByte == " + numByte);
+            
+        if(chanel.read(buffer) <= 0) {
+        	throw new IOException("Read <= 0");
         }
-        
         buffer.flip();
-        CharBuffer buff = decoder.decode(buffer);        
+        CharBuffer buff = decoder.decode(buffer);
         
-        JsonReader reader = new JsonReader(new StringReader(String.valueOf(buff)));
+        BigInteger code = new BigInteger(String.valueOf(buff));
+        code = currentUser.getRc4().DoIt(code);
+        
+        String str = new String(code.toByteArray(), ch);
+        
+        JsonReader reader = new JsonReader(new StringReader(str));
         reader.setLenient(true);      
         
-        Message message = ((Message)new Gson().fromJson(reader, Message.class));
-        System.out.println(message);
-    	return message;  
+        return ((Message)new Gson().fromJson(reader, Message.class));
     }
     
     class Message {

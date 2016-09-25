@@ -5,6 +5,8 @@ import java.math.BigInteger;
 import java.security.SecureRandom;
 import java.util.Arrays;
 
+import com.google.gson.JsonObject;
+
 import ru.objects.NIOServer;
 import ru.objects.RC4;
 import ru.objects.RSA;
@@ -17,6 +19,18 @@ public class Start {
     public static void main(String[] args) throws IOException {
     	new NIOServer("localhost", 2020, "99538574").run();
     	
+    	/*
+    	RC4 rc4 = new RC4("99538574".getBytes());
+    	JsonObject reply = new JsonObject();
+        reply.addProperty("type", "123");
+        reply.addProperty("name", "123");
+        reply.addProperty("attachment", "123");
+        
+    	BigInteger code = new BigInteger(reply.toString().getBytes());
+    	code = rc4.DoIt(code);
+    	
+    	
+    	*/
     	
     	/* Server */
     	/**
